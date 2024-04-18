@@ -2,6 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Video;
+using System;
 
 
 //Script for extracting placement of skier from bounding box data and angle of skier from pose data
@@ -15,12 +16,17 @@ public class SkierPlacementScript : MonoBehaviour
     public Canvas canvas;
     public VideoPlayer videoPlayer;
     public GameObject cube;
+    public bool staticMode;
 
     private ParticleMovement particleMovement;
+    //private List<GameObject> currentBoundingBoxes = new List<GameObject>();
+    private Color currentColor;
+    private bool videoStarted = false;
+    private float videoStartDelay = 0f;
+    private bool particleSystemsStarted = false;
+    private float lastDetectionTime = 0f;
 
-    private List<GameObject> currentBoundingBoxes = new List<GameObject>();
 
- 
     [System.Serializable]
     public class BoundingBox
     {
@@ -29,6 +35,7 @@ public class SkierPlacementScript : MonoBehaviour
         public List<float> confidence;
         public List<float> class_id;
         public List<string> class_name;
+        public List<string> colors;
     }
 
     [System.Serializable]
@@ -53,10 +60,10 @@ public class SkierPlacementScript : MonoBehaviour
     [System.Serializable]
     public class MotionData
     {
-        public float Time_s;
-        public float Accel_X_g;
-        public float Accel_Y_g;
-        public float Accel_Z_g;
+        public float timestamp;
+        public float accel_X;
+        public float accel_Y;
+        public float accel_Z;
     }
 
     [System.Serializable]
@@ -78,13 +85,14 @@ public class SkierPlacementScript : MonoBehaviour
 
     public MotionDataList ReadMotionFile(TextAsset file)
     {
+        //Debug.Log($"Raw JSON motion data: {file.text}");
         string jsonToParse = "{\"motionData\":" + file.text + "}";
         return JsonUtility.FromJson<MotionDataList>(jsonToParse);
     }
 
     public PoseList ReadPoseFile(TextAsset file)
     {
-        Debug.Log($"Raw JSON data: {file.text}"); //print json
+        //Debug.Log($"Raw JSON data: {file.text}"); 
 
         string jsonToParse = "{\"poses\":" + file.text + "}";
         return JsonUtility.FromJson<PoseList>(jsonToParse);
@@ -103,46 +111,43 @@ public class SkierPlacementScript : MonoBehaviour
     private DirectionState currentSkierDirection = DirectionState.Straight;
     private float averageAngle;
 
+    // Dimensions of the source video
+    private float sourceVideoWidth = 3840f;
+    private float sourceVideoHeight = 2160f;
 
-    void FindBoundingBox(float currentTime)
+
+    bool FindBoundingBox(float currentTime)
     {
         bool foundRelevantBox = false;
         BoundingBox currentBbox = null;
 
-        // Find the most recent bounding box up to the current time.
+        // Find the most recent bounding box up to the current time
         foreach (var bbox in bboxList.boundingBoxes)
         {
-            if (bbox.timestamp <= currentTime && (bbox.class_name.Count > 0 && bbox.class_name[0] == "person"))
+            if (bbox.timestamp <= currentTime && (bbox.class_name.Count > 0 && (bbox.class_name[0] == "person" || bbox.class_name[0] == "Skier")))
             {
                 currentBbox = bbox;
-                foundRelevantBox = true; 
+                foundRelevantBox = true;
+                
+                //break; // Stop the loop once the relevant box is found
             }
             else if (bbox.timestamp > currentTime)
             {
+                //Debug.Log($"Box not valid at video Time: {currentTime}, Bbox timestamp: {bbox.timestamp}, Bbox coordinates: {bbox.coordinates}");
                 break;
             }
         }
-
-        // Clear previously displayed bounding boxes.
-        foreach (var bbox in currentBoundingBoxes)
-        {
-            Destroy(bbox);
-        }
-        currentBoundingBoxes.Clear();
-
         if (foundRelevantBox && currentBbox != null)
         {
-            //Debug.Log($"Video Time: {currentTime}, Bbox timestamp: {toDisplay.timestamp}");
             ExtractBoundingBoxData(currentBbox);
         }
+        // Update position based on the found bounding box
+        return foundRelevantBox;
     }
 
 
     void ExtractBoundingBoxData(BoundingBox bbox)
     {
-        // Dimensions of the source video
-        float sourceVideoWidth = 3840f;
-        float sourceVideoHeight = 2160f;
 
         // Dimensions of the Canvas
         float canvasWidth = canvas.GetComponent<RectTransform>().rect.width;
@@ -153,44 +158,60 @@ public class SkierPlacementScript : MonoBehaviour
         float scaleFactorY = canvasHeight / sourceVideoHeight;
 
         // Calculate the bounding box's canvas coordinates and size
-        float xMin = bbox.coordinates[0] * scaleFactorX;
-        float yMin = bbox.coordinates[1] * scaleFactorY;
-        float xMax = bbox.coordinates[2] * scaleFactorX;
-        float yMax = bbox.coordinates[3] * scaleFactorY;
-        float width = xMax - xMin;
-        float height = yMax - yMin;
+        if (bbox.coordinates.Count > 0)
+        {
+            float xMin = bbox.coordinates[0] * scaleFactorX;
+            float yMin = bbox.coordinates[1] * scaleFactorY;
+            float xMax = bbox.coordinates[2] * scaleFactorX;
+            float yMax = bbox.coordinates[3] * scaleFactorY;
+            float width = xMax - xMin;
+            float height = yMax - yMin;
 
-        // Calculate the center of the bounding box in canvas coordinates
-        float centerX = (xMin + xMax) / 2;
-        float centerY = (yMin + yMax) / 2;
+            // Calculate the center of the bounding box in canvas coordinates
+            float centerX = (xMin + xMax) / 2;
+            float centerY = (yMin + yMax) / 2;
 
 
 
-        //BOUNDING BOX
-        /*
-        GameObject bboxGameObject = Instantiate(boundingBoxPrefab, canvas.transform);
-        
-        float xMin = (bbox.coordinates[0] + 40) * scaleFactorX;
-        float yMin = (bbox.coordinates[1] - 40) * scaleFactorY;
-        float xMax = (bbox.coordinates[2] + 40) * scaleFactorX;
-        float yMax = (bbox.coordinates[3] -40) * scaleFactorY;
-        
-        //convert yMin for Unity's UI system
-        float convertedYMin = canvasHeight - (yMin + height); // Adjusted conversion
+            //DRAW BOUNDING BOX
+            /*
+            GameObject bboxGameObject = Instantiate(boundingBoxPrefab, canvas.transform);
 
-        RectTransform rectTransform = bboxGameObject.GetComponent<RectTransform>();
-        rectTransform.anchoredPosition = new Vector2(xMin, convertedYMin);
-        rectTransform.sizeDelta = new Vector2(width, height);
+            float xMin = (bbox.coordinates[0] + 40) * scaleFactorX;
+            float yMin = (bbox.coordinates[1] - 40) * scaleFactorY;
+            float xMax = (bbox.coordinates[2] + 40) * scaleFactorX;
+            float yMax = (bbox.coordinates[3] -40) * scaleFactorY;
 
-        currentBoundingBoxes.Add(bboxGameObject);
+            //convert yMin for Unity's UI system
+            float convertedYMin = canvasHeight - (yMin + height); // Adjusted conversion
 
-        */
+            RectTransform rectTransform = bboxGameObject.GetComponent<RectTransform>();
+            rectTransform.anchoredPosition = new Vector2(xMin, convertedYMin);
+            rectTransform.sizeDelta = new Vector2(width, height);
 
-        Vector3 worldPosition = Camera.main.ScreenToWorldPoint(new Vector3(centerX, canvasHeight - centerY, Camera.main.nearClipPlane + 100)); // Adjust the Z value as needed for visibility
-        cube.transform.position = worldPosition;
-        cube.transform.localScale = new Vector3(width / 100, height / 100, cube.transform.localScale.z); //må finne ut av hvorfor 100
+            currentBoundingBoxes.Add(bboxGameObject);
+            */
 
-        //particleSys.SetParticlePosition(centerX, centerY);
+            Vector3 worldPosition = Camera.main.ScreenToWorldPoint(new Vector3(centerX, canvasHeight - centerY, Camera.main.nearClipPlane + 100)); // Adjust the Z value as needed for visibility
+            cube.transform.position = worldPosition;
+            cube.transform.localScale = new Vector3(width / 100, height / 100, cube.transform.localScale.z); //må finne ut av hvorfor 100
+
+            //particleSys.SetParticlePosition(centerX, centerY);
+        }
+
+        if (bbox.colors.Count == 3) 
+        {
+            float r = float.Parse(bbox.colors[0]) / 255.0f; 
+            float g = float.Parse(bbox.colors[1]) / 255.0f;
+            float b = float.Parse(bbox.colors[2]) / 255.0f;
+            Color color = new Color(r, g, b);
+
+            if (r != currentColor.r && g != currentColor.g && b != currentColor.b)
+            {
+                OnColorChanged?.Invoke(color);
+                currentColor = color;
+            }   
+        }
 
     }
 
@@ -277,50 +298,87 @@ public class SkierPlacementScript : MonoBehaviour
         return angleDegrees;
     }
 
-    private void EstimateDirectionFromMotion(float currentTime)
+
+    private void FindMotionData(float currentTime)
     {
-        // Assuming motionDataList is already populated
         MotionData closestData = null;
+        //float minTimeDiff = float.MaxValue;
+        //float closestTimestamp = float.NegativeInfinity;
+        bool foundRelevantData = false;
+
+  
+
         foreach (var data in motionDataList.motionData)
         {
-            if (data.Time_s <= currentTime)
+            if (data.timestamp <= currentTime)
             {
-                closestData = data; // This keeps updating until the last applicable timestamp
+                closestData = data;
+                foundRelevantData = true;
+            }
+            else if (data.timestamp > currentTime)
+            {
+                break;
+            }
+        }
+
+        /*
+        // Clear previously displayed bounding boxes.
+        foreach (var data in currentMotionData)
+        {
+            Destroy(data);
+        }
+        currentMotionData.Clear();
+        */
+
+        if (foundRelevantData && closestData != null)
+        {
+            //Debug.Log($"Video Time: {currentTime}, Motion timestamp: {closestData.timestamp}, AccelX: {closestData.accel_X}");
+            EstimateDirectionFromMotion(closestData, currentTime);
+        }
+    }
+
+
+    private void EstimateDirectionFromMotion(MotionData mdata, float time)
+    {
+        DirectionState previousDirection = currentSkierDirection;
+        if (mdata != null)
+        {
+            
+            const float softThreshold = 0.05f; 
+            const float hardThreshold = 0.15f; 
+
+           
+            float accel_X_abs = Math.Abs(mdata.accel_X);
+            /*
+            if (accel_X_abs > softThreshold)
+            {
+                if (accel_X_abs > hardThreshold)
+                {
+                    currentSkierDirection = (mdata.accel_X > 0) ? DirectionState.HardRight : DirectionState.HardLeft;
+                }
+                else
+                {
+                    currentSkierDirection = (mdata.accel_X > 0) ? DirectionState.SoftRight : DirectionState.SoftLeft;
+                }
             }
             else
             {
-                break; // Exit the loop once the current time has been exceeded
+                currentSkierDirection = DirectionState.Straight;
             }
-        }
-
-        if (closestData != null)
-        {
-            UpdateDirectionBasedOnMotion(closestData);
+            */
+            //currentSkierDirection = DirectionState.HardLeft;
         }
     }
 
-    private void UpdateDirectionBasedOnMotion(MotionData data)
-    {
-        // Example thresholds might need adjustment
-        const float threshold = 0.1f; // Define a threshold for detecting a turn based on X acceleration
 
-        if (data.Accel_X_g > threshold)
-        {
-            currentSkierDirection = DirectionState.SoftRight; // or HardRight depending on the magnitude
-        }
-        else if (data.Accel_X_g < -threshold)
-        {
-            currentSkierDirection = DirectionState.SoftLeft; // or HardLeft depending on the magnitude
-        }
-        else
-        {
-            currentSkierDirection = DirectionState.Straight;
-        }
-    }
 
 
     public DirectionState GetCurrentDirectionState()
     {
+        if (staticMode)
+        {
+            return DirectionState.HardRight;
+        }
         return currentSkierDirection;
     }
 
@@ -329,6 +387,10 @@ public class SkierPlacementScript : MonoBehaviour
         return averageAngle;
     }
 
+    string ListToString<T>(List<T> list)
+    {
+        return "[" + String.Join(", ", list) + "]";
+    }
     // Start is called before the first frame update
     void Start()
     {
@@ -343,11 +405,19 @@ public class SkierPlacementScript : MonoBehaviour
         if (poseJsonFile != null)
         {
             poseList = ReadPoseFile(poseJsonFile);
-            Debug.Log($"Loaded {poseList.poses.Count} poses from JSON.");
         }
         else
         {
             Debug.LogError("JSON file with poses not assigned.");
+        }
+
+        if (motionJsonFile != null)
+        {
+            motionDataList = ReadMotionFile(motionJsonFile);
+        }
+        else
+        {
+            Debug.LogError("JSON file with motion data not assigned.");
         }
 
         if (videoPlayer != null)
@@ -366,40 +436,60 @@ public class SkierPlacementScript : MonoBehaviour
 
         averageAngle = 0f;
 
+        currentColor = new Color(0, 0, 0);
+
     }
 
-    // Update is called once per frame
-    private bool videoStarted = false;
-    private float videoStartDelay = 0f; // This will hold the delay in video start
+    public delegate void ColorChanged(Color color);
+    public static event ColorChanged OnColorChanged;
+    
 
+    // Update is called once per frame
     void Update()
     {
         if (videoPlayer.isPlaying)
         {
+            float currentTime = (float)videoPlayer.time;
             // Check if the video has "started" by having a currentTime greater than a small threshold
             if (!videoStarted && videoPlayer.time > 4.7f)
             {
                 videoStarted = true;
-                videoStartDelay = (float)videoPlayer.time; // Record the delay time
-                particleMovement.particleObject.Play();
-                particleMovement.particleCloud.Play();
+                videoStartDelay = currentTime; // Record the delay time
             }
 
             if (videoStarted)
             {
-                float adjustedCurrentTime = (float)videoPlayer.time - videoStartDelay; //adjust time based on initial delay
+                float adjustedCurrentTime = currentTime - videoStartDelay; //adjust time based on initial delay
 
-                // Clear existing bounding boxes
-                foreach (var bbox in currentBoundingBoxes)
+                bool foundDetection = FindBoundingBox(adjustedCurrentTime);
+
+                if (foundDetection)
                 {
-                    Destroy(bbox);
+                    lastDetectionTime = currentTime;
+                    if (!particleSystemsStarted)
+                    {
+                        particleMovement.particleObject.Play();
+                        particleMovement.particleCloud.Play();
+                        particleMovement.particleBurst.Play();
+                        particleSystemsStarted = true;
+                        Debug.Log("Particle System is started");
+                    }
                 }
-                currentBoundingBoxes.Clear();
 
-                FindBoundingBox(adjustedCurrentTime);
-                FindKeypoints(adjustedCurrentTime);
-                EstimateDirectionFromMotion(adjustedCurrentTime);
+                // Stop particle systems if no detection in the last 1.0 s
+                if (currentTime - lastDetectionTime > 1.0f && particleSystemsStarted)
+                {
+                    particleMovement.particleObject.Stop();
+                    particleMovement.particleCloud.Stop();
+                    particleMovement.particleBurst.Stop();
+                    particleSystemsStarted = false;
+                }
 
+                //FindBoundingBox(adjustedCurrentTime);
+                //FindKeypoints(adjustedCurrentTime);
+                //FindMotionData(adjustedCurrentTime);
+
+                
                 /*
                 if (particleMovement != null)
                 {
