@@ -60,7 +60,6 @@
     <Analyzer Include="/Applications/Unity/Hub/Editor/2022.3.14f1-x86_64/Unity.app/Contents/Tools/Unity.SourceGenerators/Unity.Properties.SourceGenerator.dll" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Assets/BoundingBoxScript.cs" />
     <Compile Include="Assets/VideoEditorAssets/ModifiedDefaultPlayables/Video/VideoSchedulerPlayableBehaviour.cs" />
     <Compile Include="Assets/VideoEditorAssets/ModifiedDefaultPlayables/TransformTween/TransformTweenMixerBehaviour.cs" />
     <Compile Include="Assets/VideoEditorAssets/ModifiedDefaultPlayables/ScreenFader/ScreenFaderBehaviour.cs" />
@@ -68,6 +67,7 @@
     <Compile Include="Assets/VideoEditorAssets/UIGradient/UIGradient.cs" />
     <Compile Include="Assets/VideoEditorAssets/UIGradient/UICornersGradient.cs" />
     <Compile Include="Assets/VideoEditorAssets/MaterialAnimationPlayable/MaterialAnimationClip.cs" />
+    <Compile Include="Assets/SkierPlacement.cs" />
     <Compile Include="Assets/Xardas/ML-Agents Configuration/Configuration/Fileformat/BehaviorParameter/SelfPlay.cs" />
     <Compile Include="Assets/VideoEditorAssets/ModifiedDefaultPlayables/Video/VideoPlayableBehaviour.cs" />
     <Compile Include="Assets/VideoEditorAssets/UIGradient/SetDirty.cs" />
@@ -131,6 +131,7 @@
     <Compile Include="Assets/Xardas/ML-Agents Configuration/Cli/CliExtensions.cs" />
     <Compile Include="Assets/Xardas/ML-Agents Configuration/Configuration/ConfigFileCreater.cs" />
     <Compile Include="Assets/VideoEditorAssets/MaterialAnimationPlayable/MaterialAnimationMixerBehaviour.cs" />
+    <Compile Include="Assets/ParticleColor.cs" />
     <Compile Include="Assets/Xardas/ML-Agents Configuration/Yaml/YamlFile.cs" />
     <Compile Include="Assets/Xardas/ML-Agents Configuration/Configuration/Fileformat/BehaviorParameter/Memory.cs" />
     <Compile Include="Assets/Xardas/ML-Agents Configuration/Configuration/Fileformat/EnvironmentParameters.cs" />

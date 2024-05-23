@@ -1,459 +1,243 @@
 using UnityEngine;
 using System.Collections.Generic;
-
-[System.Serializable]
-public class Pose
-{
-    public float timestamp;
-    public List<float> keypoints;
-}
-
-[System.Serializable]
-public class PoseList
-{
-    public List<Pose> poses;
-}
+using System;
 
 
 public class ParticleMovement : MonoBehaviour
 {
+    public SkierPlacementScript placementScript;
     public ParticleSystem particleObject;
     public ParticleSystem particleCloud;
-    public TextAsset jsonFile;
+    public ParticleSystem particleBurst;
+    public ParticleSystem particleStatic;
 
-    private float baseEmissionRate = 650f;
-    private float cloudEmissionRate = 100f;
+    public bool burstMode;
+   
+    private float baseEmissionRate = 1000f;
+    private float cloudEmissionRate = 50f;
 
     private float cubeWidth;
     private float cubeHeight;
+    private float originalCloudHeight = 0.2f;
 
-    Gradient targetColorGradient;
-    float colorTransitionSpeed = 1.0f; 
-    float colorTransitionProgress = 0.0f;
-
-
-    enum DirectionState 
-    {
-        Straight,
-        HardLeft,
-        SoftLeft,
-        HardRight,
-        SoftRight
-    }
-   
-    private DirectionState currentDirectionState = DirectionState.Straight;
-
-    
-    /*
-    private bool straight;
-    private bool softLeft;
-    private bool softRight;
-    private bool hardLeft;
-    private bool hardRight;
-    private bool turningLeft;
-    private bool turningRight;
-    */
-
-    float averageAngle;
-
-    private PoseList poseList;
-
-
-    public PoseList ReadJsonFile(TextAsset file)
-    {
-        Debug.Log($"Raw JSON data: {file.text}"); //print json
-
-        string jsonToParse = "{\"poses\":" + file.text + "}";
-        return JsonUtility.FromJson<PoseList>(jsonToParse);
-    }
-
-    public void FindKeypoints(float currentTime)
-    {
-        Pose foundPose = null;
-        float closestTimestamp = float.NegativeInfinity; 
-
-        foreach (var pose in poseList.poses)
-        {
-            if (pose.timestamp <= currentTime && pose.timestamp > closestTimestamp)
-            {
-                foundPose = pose;
-                closestTimestamp = pose.timestamp;
-            }
-        }
-
-        if (foundPose != null && foundPose.keypoints.Count >= 34) 
-        {
-            Vector2 leftHip = new Vector2(foundPose.keypoints[11 * 2], foundPose.keypoints[11 * 2 + 1]);
-            //Vector2 leftKnee = new Vector2(foundPose.keypoints[13 * 2], foundPose.keypoints[13 * 2 + 1]);
-            Vector2 leftFoot = new Vector2(foundPose.keypoints[15 * 2], foundPose.keypoints[15 * 2 + 1]);
-
-            Vector2 rightHip = new Vector2(foundPose.keypoints[12 * 2], foundPose.keypoints[12 * 2 + 1]);
-            //Vector2 rightKnee = new Vector2(foundPose.keypoints[14 * 2], foundPose.keypoints[14 * 2 + 1]);
-            Vector2 rightFoot = new Vector2(foundPose.keypoints[16 * 2], foundPose.keypoints[16 * 2 + 1]);
-
-            float leftAngle = CalculateAngleWithRespectToVertical(leftHip, leftFoot);
-            float rightAngle = CalculateAngleWithRespectToVertical(rightHip, rightFoot);
-            averageAngle = (leftAngle + rightAngle) / 2;
-
-            /*
-            straight = softLeft = softRight = hardLeft = hardRight = false;
-
-            if (averageAngle >= -8 && averageAngle <= 8)
-            {
-                straight = true;
-            }
-            else if (averageAngle > 8 && averageAngle <= 20)
-            {
-                softLeft = true;
-            }
-            else if (averageAngle < -8 && averageAngle >= -20)
-            {
-                softRight = true;
-            }
-            else if (averageAngle > 20)
-            {
-                hardLeft = true;
-            }
-            else if (averageAngle < -20)
-            {
-                hardRight = true;
-            }
-            */
-
-
-            if (averageAngle >= -8 && averageAngle <= 8)
-            {
-                currentDirectionState = DirectionState.Straight;
-            }
-            else if (averageAngle > 8 && averageAngle <= 20)
-            {
-                currentDirectionState = DirectionState.SoftLeft;
-            }
-            else if (averageAngle < -8 && averageAngle >= -20)
-            {
-                currentDirectionState = DirectionState.SoftRight;
-            }
-            else if (averageAngle > 20)
-            {
-                currentDirectionState = DirectionState.HardLeft;
-            }
-            else if (averageAngle < -20)
-            {
-                currentDirectionState = DirectionState.HardRight;
-            }
-
-        }
-        else
-        {
-            Debug.LogWarning("Not enough keypoints to calculate angles.");
-        }
-
-        
-    }
-
-
-    float CalculateAngleWithRespectToVertical(Vector2 hip, Vector2 foot)
-    {
-        Vector2 vectorHipToFoot = foot - hip;
-        Vector2 verticalVector = new Vector2(0, 1); // y-axis
-
-        vectorHipToFoot.Normalize();
-
-        float dotProduct = Vector2.Dot(verticalVector, vectorHipToFoot);
-        float angleRadians = Mathf.Acos(dotProduct);
-        float angleDegrees = angleRadians * Mathf.Rad2Deg;
-
-        if (angleDegrees > 80f)
-        {
-            angleDegrees = 80f;
-        }
-
-        if (hip.x > foot.x)
-        {
-            angleDegrees = -angleDegrees;
-        }
-
-        return angleDegrees;
-    }
+    private float averageAngle;
+    private SkierPlacementScript.DirectionState currentDirectionState;
+    private SkierPlacementScript.DirectionState previousDirectionState;
 
 
     void AdjustParticlePlacement()
     {
-        Vector3 bottomCenterRel = new Vector3(0, -cubeHeight/10, -15);
-        Vector3 bottomLeftRel = new Vector3(-cubeWidth/10, -cubeHeight/10, -15);
-        Vector3 bottomRightRel = new Vector3(cubeWidth/10, -cubeHeight/10, -15);
+        Vector3 bottomCenterRel = new Vector3(0, -cubeHeight/2, -2);
+        Vector3 bottomLeftRel = new Vector3(-cubeWidth/4, -cubeHeight/6, -3);
+        Vector3 bottomRightRel = new Vector3(cubeWidth/4, -cubeHeight/6, -3);
 
-        /*
-        
-        if (turningLeft)
+        //burst
+        //Vector3 bottomLeftRel = new Vector3(-cubeWidth / 15, -cubeHeight / 8, -2);
+        //Vector3 bottomRightRel = new Vector3(cubeWidth / 15, -cubeHeight / 8, -2);
+
+        if (placementScript.staticMode)
         {
-            particleObject.transform.localPosition = bottomRightRel;
-            particleCloud.transform.localPosition = bottomRightRel + new Vector3(0, 0, 10);
-        }
-        else if (turningRight)
-        {
-            particleObject.transform.localPosition = bottomLeftRel;
-            particleCloud.transform.localPosition = bottomLeftRel + new Vector3(0,0,10);
+            particleStatic.transform.localPosition = bottomLeftRel + new Vector3(-0.3f,-0.4f,1);
+            particleObject.transform.localPosition = bottomLeftRel + new Vector3(-0.3f, -0.4f, 1);
+            var cloudShape = particleCloud.shape;
+            cloudShape.rotation = new Vector3(-35, -70, 0);
+            particleCloud.transform.localPosition = bottomLeftRel + new Vector3(-1.0f, -0.1f, 1);
+
         }
         else
         {
-            particleObject.transform.localPosition = bottomCenterRel;
-            particleCloud.transform.localPosition = bottomCenterRel + new Vector3(0, 0, 10);
-        }
-        */
-
-        switch (currentDirectionState)
-        {
-            case DirectionState.Straight:
-                particleObject.transform.localPosition = bottomCenterRel;
-                particleCloud.transform.localPosition = bottomCenterRel + new Vector3(0, 0, 10);
-                break;
-            case DirectionState.SoftLeft:
-            case DirectionState.HardLeft:
-                particleObject.transform.localPosition = bottomRightRel;
-                particleCloud.transform.localPosition = bottomRightRel + new Vector3(0, 0, 10);
-                break;
-            case DirectionState.SoftRight:
-            case DirectionState.HardRight:
-                particleObject.transform.localPosition = bottomLeftRel;
-                particleCloud.transform.localPosition = bottomLeftRel + new Vector3(0, 0, 10);
-                break;
+            switch (currentDirectionState)
+            {
+                case SkierPlacementScript.DirectionState.Straight:
+                    particleObject.transform.localPosition = bottomCenterRel + new Vector3(0.5f, 0, 0);
+                    particleCloud.transform.localPosition = bottomCenterRel + new Vector3(1, 0, 0);
+                    particleBurst.transform.localPosition = bottomCenterRel + new Vector3(0, 0, 0);
+                    break;
+                case SkierPlacementScript.DirectionState.SoftLeft:
+                case SkierPlacementScript.DirectionState.HardLeft:
+                    particleObject.transform.localPosition = bottomRightRel; 
+                    particleCloud.transform.localPosition = bottomRightRel + new Vector3(0, 0, 0);
+                    particleBurst.transform.localPosition = bottomRightRel + new Vector3(0, 0, 0);
+                    break;
+                case SkierPlacementScript.DirectionState.SoftRight:
+                case SkierPlacementScript.DirectionState.HardRight:
+                    particleObject.transform.localPosition = bottomLeftRel;
+                    particleCloud.transform.localPosition = bottomLeftRel + new Vector3(0, 0, 0);
+                    particleBurst.transform.localPosition = bottomLeftRel + new Vector3(0, 0, 0);
+                    break;
+            }
         }
     }
+
+    //Method used to place particles based on detection of skis
+    /*
+    public void SetSkiParticlePosition(Vector3 position)
+    {
+        Vector3 bottomCenterRel = new Vector3(0, -cubeHeight / 6, -2);
+        Vector3 bottomLeftRel = new Vector3(-cubeWidth / 4, -cubeHeight / 6, -2);
+        Vector3 bottomRightRel = new Vector3(cubeWidth / 4, -cubeHeight / 6, -2);
+        switch (currentDirectionState)
+        {
+            case SkierPlacementScript.DirectionState.Straight:
+                particleBurst.transform.localPosition = bottomCenterRel + new Vector3(0, 0, 0);
+                break;
+            case SkierPlacementScript.DirectionState.SoftLeft:
+                particleBurst.transform.localPosition = bottomRightRel + new Vector3(0, 0, -2);
+                break;
+            case SkierPlacementScript.DirectionState.HardLeft:
+                particleBurst.transform.localPosition = bottomRightRel + new Vector3(0, 0, -2);
+                break;
+            case SkierPlacementScript.DirectionState.SoftRight:
+                particleBurst.transform.localPosition = bottomLeftRel + new Vector3(0, 0, 0);
+                break;
+            case SkierPlacementScript.DirectionState.HardRight:
+                particleBurst.transform.localPosition = bottomLeftRel + new Vector3(0, 0, 0);
+                break;
+        }
+        particleBurst.transform.position = position + new Vector3(0, -0.3f, 0); 
+        particleBurst.Play();
+    }
+    */
 
 
     void AdjustParticleDirectionAndSize()
     {
-        Vector2 flowDirection = Vector2.up; 
+        Vector2 flowDirection = Vector2.up;
 
-        /*
-        if (hardLeft)
-        {
-            flowDirection = Vector2.left; 
-        }
-        else if (softLeft)
-        {
-            flowDirection = (Vector2.up + Vector2.left).normalized; 
-        }
-        else if (hardRight)
-        {
-            flowDirection = Vector2.right; 
-        }
-        else if (softRight)
-        {
-            flowDirection = (Vector2.up + Vector2.right).normalized; 
-        }
-        */
+        var cloudShape = particleCloud.shape;
+        var shape = particleObject.shape;
+        var burstShape = particleBurst.shape;
+        var cloudMain = particleCloud.main;
+        var main = particleObject.main;
+        var burstMain = particleBurst.main;
+
 
         switch (currentDirectionState)
         {
-            case DirectionState.Straight:
+            case SkierPlacementScript.DirectionState.Straight:
+                main.startSpeed = UnityEngine.Random.Range(2, 3);
+                cloudMain.startSpeed = UnityEngine.Random.Range(0, 1);
+                burstMain.startSize = 0.01f;
                 break;
-            case DirectionState.SoftLeft:
+            case SkierPlacementScript.DirectionState.SoftLeft:
                 flowDirection = (Vector2.up + Vector2.left).normalized;
+                cloudShape.rotation = new Vector3(0, -40, 0);
+                shape.rotation = new Vector3(0, 40, 0);
+                burstShape.rotation = new Vector3(0, 40, 0);
+                main.startSpeed = UnityEngine.Random.Range(7, 8);
+                cloudMain.startSpeed = UnityEngine.Random.Range(2, 3);
                 break;
-            case DirectionState.SoftRight:
+            case SkierPlacementScript.DirectionState.SoftRight:
                 flowDirection = (Vector2.up + Vector2.right).normalized;
+                cloudShape.rotation = new Vector3(0, 40, 0);
+                shape.rotation = new Vector3(0, -40, 0);
+                burstShape.rotation = new Vector3(0, -40, 0);
+                main.startSpeed = UnityEngine.Random.Range(7, 8);
+                cloudMain.startSpeed = UnityEngine.Random.Range(2, 3);
                 break;
-            case DirectionState.HardLeft:
+            case SkierPlacementScript.DirectionState.HardLeft:
                 flowDirection = Vector2.left;
+                cloudShape.rotation = new Vector3(0, -60, 0);
+                shape.rotation = new Vector3(0, 60, 0);
+                burstShape.rotation = new Vector3(0, 60, 0);
+                main.startSpeed = UnityEngine.Random.Range(10, 12);
+                cloudMain.startSpeed = UnityEngine.Random.Range(4, 5);
                 break;
-            case DirectionState.HardRight:
+            case SkierPlacementScript.DirectionState.HardRight:
                 flowDirection = Vector2.right;
+                cloudShape.rotation = new Vector3(0, 60, 0);
+                shape.rotation = new Vector3(0, -60, 0);
+                burstShape.rotation = new Vector3(0, -60, 0);
+                main.startSpeed = UnityEngine.Random.Range(10, 12);
+                cloudMain.startSpeed = UnityEngine.Random.Range(4, 5);
                 break;
         }
 
 
         flowDirection.Normalize();
 
-        var main = particleObject.main;
-        main.startSize = cubeHeight/5;
-
-        var cloudMain = particleCloud.main;
-        cloudMain.startSize = cubeHeight/2;
-
-        var shape = particleObject.shape;
-        shape.scale = new Vector3(cubeWidth / 2, cubeHeight / 8, 0);
-        shape.rotation = new Vector3(0, averageAngle, 0);
-
-        var cloudShape = particleCloud.shape;
-        //cloudShape.scale = new Vector3(cubeWidth / 4, cubeHeight / 4, 0);
-        cloudShape.radius = cubeHeight/25;
-        //cloudShape.length = 2;
-        cloudShape.angle = 2*cubeHeight;
-        cloudShape.rotation = new Vector3(0, averageAngle, 0);
-
-        var emission = particleObject.emission;
-        emission.rateOverTime = flowDirection.magnitude * baseEmissionRate;
-       
         var cloudEmission = particleCloud.emission;
-        cloudEmission.rateOverTime = flowDirection.magnitude * cloudEmissionRate;
-    }
 
+        //shape.scale = new Vector3(cubeWidth / 2, cubeHeight / 8, 0);
 
-    void ChangeParticleColor()
-    {
-        var colorOverTime = particleObject.colorOverLifetime;
-        colorOverTime.enabled = true;
-
-        var main = particleObject.main;
-        var currentColor = main.startColor; 
-
-        Gradient gradient = new Gradient();
-
-        switch (currentDirectionState)
+        if (cubeHeight < 1.8f)
         {
-            case DirectionState.Straight:
-                gradient.SetKeys(
-                new GradientColorKey[] {
-                    new GradientColorKey(Color.white, 0.0f),
-                    new GradientColorKey(Color.white, 0.5f), 
-                    new GradientColorKey(Color.green, 1.0f)
-                },
-                new GradientAlphaKey[] {
-                    new GradientAlphaKey(1.0f, 0.0f),
-                    new GradientAlphaKey(1.0f, 1.0f)
-                }
-            );
-                break;
-            case DirectionState.SoftLeft:
-                gradient.SetKeys(
-                new GradientColorKey[] {
-                    new GradientColorKey(Color.white, 0.0f),
-                    new GradientColorKey(Color.white, 0.5f), 
-                    new GradientColorKey(Color.green, 1.0f)
-                },
-                new GradientAlphaKey[] {
-                    new GradientAlphaKey(1.0f, 0.0f),
-                    new GradientAlphaKey(1.0f, 1.0f)
-                }
-            );
-                break;
-            case DirectionState.HardLeft:
-                gradient.SetKeys(
-                new GradientColorKey[] {
-                    new GradientColorKey(Color.white, 0.0f),
-                    new GradientColorKey(Color.white, 0.5f), 
-                    new GradientColorKey(Color.green, 1.0f)
-                },
-                new GradientAlphaKey[] {
-                    new GradientAlphaKey(1.0f, 0.0f),
-                    new GradientAlphaKey(1.0f, 1.0f)
-                }
-            );
-                break;
-            case DirectionState.SoftRight:
-                gradient.SetKeys(
-                new GradientColorKey[] {
-                    new GradientColorKey(Color.white, 0.0f),
-                    new GradientColorKey(Color.white, 0.5f), 
-                    new GradientColorKey(Color.green, 1.0f)
-                },
-                new GradientAlphaKey[] {
-                    new GradientAlphaKey(1.0f, 0.0f),
-                    new GradientAlphaKey(1.0f, 1.0f)
-                }
-            );
-                break;
-            case DirectionState.HardRight:
-                gradient.SetKeys(
-                new GradientColorKey[] {
-                    new GradientColorKey(Color.white, 0.0f),
-                    new GradientColorKey(Color.white, 0.5f), 
-                    new GradientColorKey(Color.green, 1.0f)
-                },
-                new GradientAlphaKey[] {
-                    new GradientAlphaKey(1.0f, 0.0f),
-                    new GradientAlphaKey(1.0f, 1.0f)
-                }
-            );
-                break;
-        }
+            shape.radius = cubeHeight / 50;
+            main.startSize = cubeHeight / 12;
 
-        colorOverTime.color = gradient;
-
-        /*
-        var main = particleObject.main;
-        if (turningLeft)
-        {
-            main.startColor = new Color(0, 1, 0, 1);
+            cloudShape.radius = cubeHeight / 6;
+            cloudShape.scale = new Vector3(0.1f, 0.1f, 0.4f);
+            cloudMain.startSize = cubeHeight / 12;
+            //cloudMain.startSize = UnityEngine.Random.Range(0.5f, 1.2f);
+            //cloudMain.startLifetime = UnityEngine.Random.Range(1f, 2f);
+            burstShape.scale = new Vector3(0.1f, 0.1f, 0.4f);
+            burstMain.startSize = UnityEngine.Random.Range(0.1f, 0.5f);
+            //cloudEmission.rateOverTime = 0.75f * cloudEmissionRate;
         }
         else
         {
-            main.startColor = new Color(1, 0, 0, 1);
+            shape.radius = 0.06f;
+            main.startSize = UnityEngine.Random.Range(0.1f, 0.4f);
+
+            cloudShape.radius = 0.7f;
+            cloudShape.scale = new Vector3(0.5f, 0.5f, 0.8f);
+            cloudMain.startSize = UnityEngine.Random.Range(0.8f, 2f);
+            //cloudEmission.rateOverTime = cloudEmissionRate;
+            //cloudMain.startLifetime = UnityEngine.Random.Range(6f, 8f);
+
+            burstMain.startSize = UnityEngine.Random.Range(0.1f, 1f);
+            burstShape.scale = new Vector3(0.5f, 0.5f, 0.8f);
         }
-        */
+        
+        shape.length = 8 * shape.radius;
+        //cloudShape.length = 8 * cloudShape.length;
     }
 
 
-    Gradient InterpolateGradients(Gradient from, Gradient to, float progress)
+    void ParticleBurst()
     {
-        // Implement interpolation logic here. This is a complex task requiring
-        // interpolation of each key in the gradients. You might use Gradient.Lerp if available
-        // or manually interpolate the color and alpha keys.
-        Gradient gradient = new Gradient();
+        particleBurst.Play();
+        var burst = particleBurst.emission;
+        burst.enabled = true;
+        var burstCount = new ParticleSystem.Burst(0.0f, 500); 
+        particleBurst.emission.SetBursts(new[] { burstCount });
 
-        return gradient;
+
+        particleObject.Play();
+        var objectBurst = particleObject.emission;
+        objectBurst.enabled = true;
+        var objectBurstCount = new ParticleSystem.Burst(0.0f, 1000);
+        particleObject.emission.SetBursts(new[] { objectBurstCount });
+
+        //particleObject er ny (tidligere rateovertime: 2000, rateoverdistance: 600)
     }
 
-    Gradient GetCurrentGradient(ParticleSystem.ColorOverLifetimeModule colorOverTime)
+    //Method used to verify if cube placement is correct
+    void OnDrawGizmos()
     {
-        // Extract the current gradient from colorOverTime. This might be straightforward if
-        // the color is already a gradient, or require creating a new gradient from a solid color.
-        Gradient gradient = new Gradient();
-
-        return gradient;
+        Gizmos.color = Color.red; 
+        Gizmos.DrawWireSphere(transform.position, cubeHeight); // Draw a red wireframe sphere around the skier/cube at its position
     }
-
-
 
     void Start()
     {
-        if (jsonFile != null)
-        {
-            poseList = ReadJsonFile(jsonFile);
-            Debug.Log($"Loaded {poseList.poses.Count} poses from JSON.");
-        }
-        else
-        {
-            Debug.LogError("JSON file not assigned.");
-        }
 
-        var shape = particleObject.shape;
-        shape.radius = 0.06f;
-        //shape.length = 2;
-
-        var cloudShape = particleCloud.shape;
-        cloudShape.radius = 0.06f;
-        //cloudShape.length = 2;
-        
     }
-
-
 
     void Update()
     {
         cubeWidth = transform.localScale.x;
         cubeHeight = transform.localScale.y;
-
+        currentDirectionState = placementScript.GetCurrentDirectionState();
         AdjustParticlePlacement();
         AdjustParticleDirectionAndSize();
 
-
-        var colorOverTime = particleObject.colorOverLifetime;
-
-        if (colorTransitionProgress < 1.0f)
-        {
-            Gradient currentGradient = GetCurrentGradient(colorOverTime);
-            Gradient newGradient = InterpolateGradients(currentGradient, targetColorGradient, colorTransitionProgress);
-
-            colorOverTime.color = new ParticleSystem.MinMaxGradient(newGradient);
-
-            colorTransitionProgress += Time.deltaTime * colorTransitionSpeed;
+        if ((currentDirectionState != previousDirectionState) && burstMode && currentDirectionState == SkierPlacementScript.DirectionState.HardLeft)
+            {
+            Debug.Log("Burst!");
+            ParticleBurst();
         }
-
-
-        ChangeParticleColor();
+        averageAngle = placementScript.GetAverageAngle();
     }
 
 
