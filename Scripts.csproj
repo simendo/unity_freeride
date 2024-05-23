@@ -10,7 +10,7 @@
     <ProductVersion>10.0.20506</ProductVersion>
     <SchemaVersion>2.0</SchemaVersion>
     <RootNamespace></RootNamespace>
-    <ProjectGuid>{4DA6F678-5334-884C-AA59-7ABD7CFF374A}</ProjectGuid>
+    <ProjectGuid>{355D41E7-CFE6-FE04-0864-8A86D4B29861}</ProjectGuid>
     <OutputType>Library</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
     <AssemblyName>Scripts</AssemblyName>
