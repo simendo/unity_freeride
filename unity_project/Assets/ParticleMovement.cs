@@ -1,7 +1,7 @@
-using UnityEngine;
-using System.Collections.Generic;
-using System;
 
+//Script for placing and adjusting particle systems
+
+using UnityEngine;
 
 public class ParticleMovement : MonoBehaviour
 {
@@ -18,7 +18,6 @@ public class ParticleMovement : MonoBehaviour
 
     private float cubeWidth;
     private float cubeHeight;
-    private float originalCloudHeight = 0.2f;
 
     private float averageAngle;
     private SkierPlacementScript.DirectionState currentDirectionState;
@@ -30,10 +29,6 @@ public class ParticleMovement : MonoBehaviour
         Vector3 bottomCenterRel = new Vector3(0, -cubeHeight/2, -2);
         Vector3 bottomLeftRel = new Vector3(-cubeWidth/4, -cubeHeight/6, -3);
         Vector3 bottomRightRel = new Vector3(cubeWidth/4, -cubeHeight/6, -3);
-
-        //burst
-        //Vector3 bottomLeftRel = new Vector3(-cubeWidth / 15, -cubeHeight / 8, -2);
-        //Vector3 bottomRightRel = new Vector3(cubeWidth / 15, -cubeHeight / 8, -2);
 
         if (placementScript.staticMode)
         {
@@ -49,17 +44,25 @@ public class ParticleMovement : MonoBehaviour
             switch (currentDirectionState)
             {
                 case SkierPlacementScript.DirectionState.Straight:
-                    particleObject.transform.localPosition = bottomCenterRel + new Vector3(0.5f, 0, 0);
+                    particleObject.transform.localPosition = bottomCenterRel + new Vector3(0.5f, 0, 0); //the additional vector can be used for manual adjustment
                     particleCloud.transform.localPosition = bottomCenterRel + new Vector3(1, 0, 0);
                     particleBurst.transform.localPosition = bottomCenterRel + new Vector3(0, 0, 0);
                     break;
                 case SkierPlacementScript.DirectionState.SoftLeft:
+                    particleObject.transform.localPosition = bottomRightRel;
+                    particleCloud.transform.localPosition = bottomRightRel + new Vector3(0, 0, 0);
+                    particleBurst.transform.localPosition = bottomRightRel + new Vector3(0, 0, 0);
+                    break;
                 case SkierPlacementScript.DirectionState.HardLeft:
                     particleObject.transform.localPosition = bottomRightRel; 
                     particleCloud.transform.localPosition = bottomRightRel + new Vector3(0, 0, 0);
                     particleBurst.transform.localPosition = bottomRightRel + new Vector3(0, 0, 0);
                     break;
                 case SkierPlacementScript.DirectionState.SoftRight:
+                    particleObject.transform.localPosition = bottomLeftRel;
+                    particleCloud.transform.localPosition = bottomLeftRel + new Vector3(0, 0, 0);
+                    particleBurst.transform.localPosition = bottomLeftRel + new Vector3(0, 0, 0);
+                    break;
                 case SkierPlacementScript.DirectionState.HardRight:
                     particleObject.transform.localPosition = bottomLeftRel;
                     particleCloud.transform.localPosition = bottomLeftRel + new Vector3(0, 0, 0);
@@ -168,11 +171,10 @@ public class ParticleMovement : MonoBehaviour
             cloudShape.radius = cubeHeight / 6;
             cloudShape.scale = new Vector3(0.1f, 0.1f, 0.4f);
             cloudMain.startSize = cubeHeight / 12;
-            //cloudMain.startSize = UnityEngine.Random.Range(0.5f, 1.2f);
-            //cloudMain.startLifetime = UnityEngine.Random.Range(1f, 2f);
+            
             burstShape.scale = new Vector3(0.1f, 0.1f, 0.4f);
             burstMain.startSize = UnityEngine.Random.Range(0.1f, 0.5f);
-            //cloudEmission.rateOverTime = 0.75f * cloudEmissionRate;
+       
         }
         else
         {
@@ -182,15 +184,13 @@ public class ParticleMovement : MonoBehaviour
             cloudShape.radius = 0.7f;
             cloudShape.scale = new Vector3(0.5f, 0.5f, 0.8f);
             cloudMain.startSize = UnityEngine.Random.Range(0.8f, 2f);
-            //cloudEmission.rateOverTime = cloudEmissionRate;
-            //cloudMain.startLifetime = UnityEngine.Random.Range(6f, 8f);
 
             burstMain.startSize = UnityEngine.Random.Range(0.1f, 1f);
             burstShape.scale = new Vector3(0.5f, 0.5f, 0.8f);
         }
         
         shape.length = 8 * shape.radius;
-        //cloudShape.length = 8 * cloudShape.length;
+     
     }
 
 
@@ -209,14 +209,14 @@ public class ParticleMovement : MonoBehaviour
         var objectBurstCount = new ParticleSystem.Burst(0.0f, 1000);
         particleObject.emission.SetBursts(new[] { objectBurstCount });
 
-        //particleObject er ny (tidligere rateovertime: 2000, rateoverdistance: 600)
+     
     }
 
     //Method used to verify if cube placement is correct
     void OnDrawGizmos()
     {
         Gizmos.color = Color.red; 
-        Gizmos.DrawWireSphere(transform.position, cubeHeight); // Draw a red wireframe sphere around the skier/cube at its position
+        Gizmos.DrawWireSphere(transform.position, cubeHeight); // Draw a red wireframe sphere around the skier/cube
     }
 
     void Start()
@@ -230,7 +230,7 @@ public class ParticleMovement : MonoBehaviour
         cubeHeight = transform.localScale.y;
         currentDirectionState = placementScript.GetCurrentDirectionState();
         AdjustParticlePlacement();
-        AdjustParticleDirectionAndSize();
+        //AdjustParticleDirectionAndSize();
 
         if ((currentDirectionState != previousDirectionState) && burstMode && currentDirectionState == SkierPlacementScript.DirectionState.HardLeft)
             {

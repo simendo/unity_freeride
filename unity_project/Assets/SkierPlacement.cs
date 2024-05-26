@@ -1,11 +1,10 @@
-using System.Collections;
+
+//Script for extracting placement of skier from bounding box data and angle of skier from pose data
+
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Video;
 using System;
-
-
-//Script for extracting placement of skier from bounding box data and angle of skier from pose data
 
 public class SkierPlacementScript : MonoBehaviour
 {
@@ -82,6 +81,7 @@ public class SkierPlacementScript : MonoBehaviour
     public BoundingBoxList ReadBboxFile(TextAsset file)
     {
         string jsonToParse = "{\"boundingBoxes\":" + file.text + "}";
+        Debug.Log("read json");
         return JsonUtility.FromJson<BoundingBoxList>(jsonToParse);
     }
 
@@ -111,10 +111,10 @@ public class SkierPlacementScript : MonoBehaviour
     private float averageAngle;
 
     // Dimensions of the source video
-    //private float sourceVideoWidth = 3840f; 
-    //private float sourceVideoHeight = 2160f;
-    private float sourceVideoWidth = 1920f;
-    private float sourceVideoHeight = 1080f;
+    private float sourceVideoWidth = 3840f; 
+    private float sourceVideoHeight = 2160f;
+    //private float sourceVideoWidth = 1920f;
+    //private float sourceVideoHeight = 1080f;
 
 
     bool FindBoundingBox(float currentTime)
@@ -125,7 +125,11 @@ public class SkierPlacementScript : MonoBehaviour
 
         foreach (var bbox in bboxList.boundingBoxes)
         {
-            if (bbox.timestamp > currentTime) break;
+            if (bbox.timestamp > currentTime)
+            {
+                Debug.Log($"bbox timestamp: {bbox.timestamp}, current timestamp: {currentTime} ");
+                break;
+            }
 
             if (bbox.class_name.Contains("Skier") || bbox.class_name.Contains("person"))
             {
@@ -155,6 +159,7 @@ public class SkierPlacementScript : MonoBehaviour
 
     void ExtractBoundingBoxData(BoundingBox bbox)
     {
+        Debug.Log("Extracting data for bounding box at time: " + bbox.timestamp);
 
         // Dimensions of the Canvas
         float canvasWidth = canvas.GetComponent<RectTransform>().rect.width;
@@ -321,8 +326,6 @@ public class SkierPlacementScript : MonoBehaviour
     private void FindMotionData(float currentTime)
     {
         MotionData closestData = null;
-        //float minTimeDiff = float.MaxValue;
-        //float closestTimestamp = float.NegativeInfinity;
         bool foundRelevantData = false;
 
   
@@ -359,7 +362,7 @@ public class SkierPlacementScript : MonoBehaviour
 
            
             float accel_X_abs = Math.Abs(mdata.accel_X);
-            /*
+            
             if (accel_X_abs > softThreshold)
             {
                 if (accel_X_abs > hardThreshold)
@@ -375,8 +378,7 @@ public class SkierPlacementScript : MonoBehaviour
             {
                 currentSkierDirection = DirectionState.Straight;
             }
-            */
-            //currentSkierDirection = DirectionState.HardLeft;
+            
         }
     }
 
@@ -385,16 +387,12 @@ public class SkierPlacementScript : MonoBehaviour
     {
         if (staticMode)
         {
-            particleMovement.particleStatic.Play();
-            particleMovement.particleCloud.Play();
-            particleMovement.particleObject.Play(); 
+            particleMovement.particleStatic.Play();    
         }
-        else
-        {
-            particleMovement.particleObject.Play();
-            particleMovement.particleCloud.Play();
-            //particleMovement.particleBurst.Play();
-        }
+        
+        particleMovement.particleObject.Play();
+        particleMovement.particleCloud.Play();
+        
     }
 
     // Stop all particle systems
@@ -410,10 +408,6 @@ public class SkierPlacementScript : MonoBehaviour
 
     public DirectionState GetCurrentDirectionState()
     {
-        if (staticMode) //Only correct for current "static" video recording
-        {
-            return DirectionState.HardRight;
-        }
         return currentSkierDirection;
     }
 
@@ -430,6 +424,7 @@ public class SkierPlacementScript : MonoBehaviour
     // Start is called before the first frame update
     void Start()
     {
+        
         if (bboxJsonFile != null)
         {
             bboxList = ReadBboxFile(bboxJsonFile);
@@ -474,6 +469,8 @@ public class SkierPlacementScript : MonoBehaviour
 
         currentColor = new Color(0, 0, 0);
 
+        currentSkierDirection = DirectionState.HardRight;
+
     }
 
 
@@ -483,9 +480,9 @@ public class SkierPlacementScript : MonoBehaviour
         if (videoPlayer.isPlaying)
         {
             float currentTime = (float)videoPlayer.time;
-
+            Debug.Log($"video playing, current time: {currentTime}");
             // Check if the video has "started" by having a currentTime greater than a small threshold
-            if (!videoStarted && videoPlayer.time > 5.7f) //changed from 4.7f
+            if (!videoStarted && videoPlayer.time > 5.0f) 
             {
                 videoStarted = true;
                 videoStartDelay = currentTime; // Record the delay time
@@ -493,6 +490,7 @@ public class SkierPlacementScript : MonoBehaviour
 
             if (videoStarted)
             {
+                Debug.Log($"video started, current time: {currentTime}");
                 float adjustedCurrentTime = currentTime - videoStartDelay; 
 
                 // Detect bounding boxes and skis
@@ -501,6 +499,7 @@ public class SkierPlacementScript : MonoBehaviour
                 // Start particle systems upon first detection
                 if (foundDetection && !particleSystemsStarted)
                 {
+                    Debug.Log($"Particlesystems started!");
                     lastDetectionTime = currentTime;
                     StartParticleSystems();
                     particleSystemsStarted = true;

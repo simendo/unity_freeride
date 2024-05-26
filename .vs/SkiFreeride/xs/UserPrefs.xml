@@ -1,0 +1,28 @@
+﻿<Properties StartupConfiguration="{338ECC51-48F6-EB2B-CF34-6F459EB46FBC}|">
+  <MonoDevelop.Ide.Workbench ActiveDocument="Assets/ParticleColor.cs">
+    <Files>
+      <File FileName="Assets/BoundingBoxScript.cs" Line="468" Column="26" />
+      <File FileName="Assets/ParticleMovement.cs" Line="245" Column="1" />
+      <File FileName="Assets/WaveMovement.cs" Line="283" Column="45" />
+    </Files>
+    <Pads>
+      <Pad Id="ProjectPad">
+        <State name="__root__">
+          <Node name="SkiFreeride" expanded="True">
+            <Node name="Assets" expanded="True">
+              <Node name="Other" expanded="True" />
+              <Node name="ParticleColor.cs" selected="True" />
+            </Node>
+          </Node>
+        </State>
+      </Pad>
+    </Pads>
+  </MonoDevelop.Ide.Workbench>
+  <MonoDevelop.Ide.DebuggingService.PinnedWatches />
+  <MonoDevelop.Ide.Workspace ActiveConfiguration="Debug" />
+  <MonoDevelop.Ide.ItemProperties.Assembly-CSharp PreferredExecutionTarget="df9300bf-36c1-4b1c-b3a4-5899feb1544a" />
+  <MonoDevelop.Ide.DebuggingService.Breakpoints>
+    <BreakpointStore />
+  </MonoDevelop.Ide.DebuggingService.Breakpoints>
+  <MultiItemStartupConfigurations />
+</Properties>

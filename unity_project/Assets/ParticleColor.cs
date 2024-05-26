@@ -1,4 +1,6 @@
-using System.Collections;
+
+//Script for adjusting color of particles
+
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -212,18 +214,9 @@ public class ParticleColor : MonoBehaviour
     void UpdateParticleColor(Color color)
     {
         currentColor = color;
-
-        /*
-        // Update the current gradient based on current color
-        currentGradient = new Gradient();
-        currentGradient.SetKeys(
-            new GradientColorKey[] { new GradientColorKey(color, 0f), new GradientColorKey(color, 1f) },
-            new GradientAlphaKey[] { new GradientAlphaKey(1.0f, 0f), new GradientAlphaKey(1.0f, 1f) }
-        );
-        */
-
+       
         var main = particleObject.main;
-        main.startColor = color; // Set the particle system's start color
+        main.startColor = color; 
         Debug.Log($"Color changed to {color.r}, {color.g}, {color.b}");
 
         var staticMain = particleStatic.main;
@@ -232,7 +225,17 @@ public class ParticleColor : MonoBehaviour
         var cloudMain = particleCloud.main;
         cloudMain.startColor = color;
 
+
+        //Use this if extracted color is not available
+
         /*
+        // Update the current gradient based on current color
+        currentGradient = new Gradient();
+        currentGradient.SetKeys(
+            new GradientColorKey[] { new GradientColorKey(color, 0f), new GradientColorKey(color, 1f) },
+            new GradientAlphaKey[] { new GradientAlphaKey(1.0f, 0f), new GradientAlphaKey(1.0f, 1f) }
+        );
+        
         // Update particle system color over lifetime
         var colorOverTime = particleObject.colorOverLifetime;
         var cloudColorOverTime = particleCloud.colorOverLifetime;
@@ -270,8 +273,6 @@ public class ParticleColor : MonoBehaviour
             }
             
         }
-
-        
 
     }
 
