@@ -11,18 +11,15 @@ import cv2
 from ultralytics import YOLO
 
 
-#model = YOLO('yolov8n.pt')
-model = YOLO('/Users/simendomaas/Dokumenter_lokal/Valid/best.pt')
-model.conf = 0.05
+model = YOLO('path_to_model.pt')
 
-videopath = '/Users/simendomaas/Dokumenter_lokal/Media/Vågå/Videoklipp/7_static_closeup_enhanced.mp4'
+videopath = 'path_to_video.mp4'
 
 # Load video and get frame rate
 cap = cv2.VideoCapture(videopath)
 fps = cap.get(cv2.CAP_PROP_FPS)
 
 # Predict with the model
-#results = model('/Users/simendomaas/Documents/Skolearbeid/Masteroppgave/Media/DSCF1414.MOV', save = True)
 results = model(videopath, save = True)
 
 bbox_data_to_export = []
@@ -48,10 +45,10 @@ final_timestamp = {"final_timestamp": timestamp}
 #bbox_data_to_export.append(final_timestamp)
 
 # Export to JSON
-with open('7_static_closeup_bounding_boxes_detected.json', 'w') as f:
+with open('path_to_bboxdata.json', 'w') as f:
     json.dump(bbox_data_to_export, f)
 
-with open('7_static_closeup_bounding_boxes_detected.json', 'r') as file:
+with open('path_to_bboxdata.json', 'r') as file:
     detections = json.load(file)
 
 
@@ -132,6 +129,6 @@ combined_detections.sort(key=lambda x: x['timestamp'])
 for detection in combined_detections:
     detection['timestamp'] = round(detection['timestamp'], 2)
 
-with open('7_static_closeup_bounding_boxes_interpolated.json', 'w') as f:
+with open('bounding_boxes_interpolated.json', 'w') as f:
     json.dump(combined_detections, f)
 

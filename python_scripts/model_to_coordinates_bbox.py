@@ -12,23 +12,19 @@ from ultralytics import YOLO
 posemodel = False
 
 #Uncomment one of the models
-model = YOLO('/Users/simendomaas/Dokumenter_lokal/Valid/best.pt') #custom model
+model = YOLO('path_to_custom_model.pt') #custom model
 #model = YOLO('yolov8m.pt') #pretrained model
 #model = YOLO('yolov8m-pose.pt') #pose estimation model
 #model.conf = 0.35
 
-videopath = '/Users/simendomaas/Dokumenter_lokal/Media/Vågå/Videoklipp/angle1.mp4'
-#videopath = '/Users/simendomaas/Documents/Skolearbeid/Masteroppgave/Media/DSCF1414.MOV'
+videopath = 'path_to_video.mp4'
 
 # Load video and get frame rate
 cap = cv2.VideoCapture(videopath)
 fps = cap.get(cv2.CAP_PROP_FPS)
 
 # Predict with the model
-#results = model('/Users/simendomaas/Documents/Skolearbeid/Masteroppgave/Media/DSCF1414.MOV', save = True)
 results = model(videopath, save = True)
-#results = model(videopath, hide_labels=True, hide_conf=True, show=True, boxes=False, save=True)
-
 
 bbox_data_to_export = []
 pose_data_to_export = []
@@ -58,17 +54,12 @@ for frame_idx, result in enumerate(results):
                 }
                 pose_data_to_export.append(pose_data)
 
-
-#final_time = timestamp
-#final_timestamp = {"final_timestamp": timestamp}
-#bbox_data_to_export.append(final_timestamp)
-
 # Export to JSON
-with open('test_angle_bbox.json', 'w') as f:
+with open('bboxdata.json', 'w') as f:
         json.dump(bbox_data_to_export, f)   
 
 if posemodel:
-    with open('test_angle_pose.json', 'w') as f:
+    with open('posedata.json', 'w') as f:
         json.dump(pose_data_to_export, f)
 
 

@@ -11,14 +11,11 @@ import yaml
 # Initialize models
 ultralytics_model = YOLO('yolov8n.pt')
 #ultralytics_model = YOLO('yolov8m-pose.pt') #used to evaluate pose model
-custom_model = YOLO('/Users/simendomaas/Dokumenter_lokal/Valid/best.pt')
+custom_model = YOLO('path_to_custom_model.pt')
 
-image_dir = '/Users/simendomaas/Dokumenter_lokal/Tests/GroundTruth_Light/valid/images'
-label_dir = '/Users/simendomaas/Dokumenter_lokal/Tests/GroundTruth_Light/valid/labels'
-dataset_config = '/Users/simendomaas/Dokumenter_lokal/Tests/GroundTruth_Light/data.yaml'
-#image_dir = '/Users/simendomaas/Dokumenter_lokal/Tests/GroundTruth_Dark/valid/images'
-#label_dir = '/Users/simendomaas/Dokumenter_lokal/Tests/GroundTruth_Dark/valid/labels'
-#dataset_config = '/Users/simendomaas/Dokumenter_lokal/Tests/GroundTruth_Dark/data.yaml'
+image_dir = 'path_to_images'
+label_dir = 'path_to_labels'
+dataset_config = 'path_to_dataconfig.yaml'
 
 with open(dataset_config, 'r') as file:
     dataset = yaml.safe_load(file) 
@@ -97,8 +94,8 @@ def display_bboxes(gt_box, pred_box_pretrained, pred_box_custom, image):
 
     # Display the image with bounding boxes for this iteration
     cv2.imshow(f"Iteration ", resized_image)
-    cv2.waitKey(0)  # Wait for key press to close the image window
-    cv2.destroyAllWindows()  # Close all OpenCV windows
+    cv2.waitKey(0)  
+    cv2.destroyAllWindows()
 
 
 custom_correct_predictions = 0
@@ -108,20 +105,17 @@ pretrained_total_predictions = 0
 pretrained_wrong_class = 0
 
 
-# Iterate over images and labels
 for filename in os.listdir(image_dir):
     if filename.endswith('.jpg'):
-        # Load image
+
         image_file = os.path.join(image_dir, filename)
         image = cv2.imread(image_file)
         if image is None:
-            print("Failed to load image:", image_file)  # Debugging
+            print("Failed to load image:", image_file)  
             continue
-
-        # Load label
         label_file = os.path.join(label_dir, os.path.splitext(filename)[0] + '.txt')
         if not os.path.exists(label_file):
-            print("Label file not found for:", image_file)  # Debugging
+            print("Label file not found for:", image_file) 
             continue
 
         with open(label_file, 'r') as f:

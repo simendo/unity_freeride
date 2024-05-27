@@ -1,9 +1,3 @@
-from PIL import Image
-import cv2
-import json
-import numpy as np
-import io
-from colorthief import ColorThief
 
 #This script takes in a json file and a video and finds the dominant color within the 
 #bounding box area defined in the json. As the videos are recorded during night time
@@ -11,10 +5,17 @@ from colorthief import ColorThief
 #such that the extracted color is more likely to represent the color of the LEDs 
 #worn by the skier. 
 
-with open('interpolated_bounding_boxes_angle1.json', 'r') as file:
+from PIL import Image
+import cv2
+import json
+import numpy as np
+import io
+from colorthief import ColorThief
+
+with open('path_to_bboxdata.json', 'r') as file:
     bbox_data = json.load(file)
 
-cap = cv2.VideoCapture('/Users/simendomaas/Dokumenter_lokal/Media/Vågå/angle1_cut.mp4')
+cap = cv2.VideoCapture('path_to_video.mp4')
 if not cap.isOpened():
     print("Error opening video file")
     exit()
