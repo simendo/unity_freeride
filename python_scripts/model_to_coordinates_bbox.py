@@ -5,7 +5,7 @@
 # and can adjust the confidence threshold for detections.
 
 #-------------DECLERATION OF AI USAGE----------------
-#The following code was genereated with the assistance of CHATGPT. 
+#The following code was written with the assistance of CHATGPT.
 
 import json
 import numpy as np
