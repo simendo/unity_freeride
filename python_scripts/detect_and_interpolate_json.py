@@ -4,6 +4,9 @@
 # detections to perform extrapolation and ensures the final detections are sorted by timestamp. The resulting data, 
 # including both detected and interpolated bounding boxes, is saved to a JSON file.
 
+#-------------DECLERATION OF AI USAGE----------------
+#The following code was genereated with the assistance of CHATGPT. Specifically, CHATGPT was used for the for loops
+#where data is formatted before exporting to json. 
 
 import json
 import numpy as np

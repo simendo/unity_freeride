@@ -4,6 +4,9 @@
 # The script allows the user to choose between different YOLO models (custom-trained, pre-trained, or pose estimation) 
 # and can adjust the confidence threshold for detections.
 
+#-------------DECLERATION OF AI USAGE----------------
+#The following code was genereated with the assistance of CHATGPT. 
+
 import json
 import numpy as np
 import cv2
